@@ -14,7 +14,6 @@ export default function App() {
       <div className="app-wrapper">
         <div className="app-header">
           <h1 className="app-title">📚 Traductor Manu</h1>
-          <p className="app-subtitle">Tu diccionario personal español-inglés</p>
         </div>
 
         <div className="sections-container">
