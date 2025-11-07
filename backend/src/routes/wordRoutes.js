@@ -1,18 +1,45 @@
-//(Se recomienda escuchar música cuando se esté haciendo este taller)
+//(Se recomienda escuchar música cuando se esté haciendo este taller porque inspira :) )
 
 const express = require('express');
 const router = express.Router();
 const Word = require('../models/Word');
 const { Sequelize } = require('sequelize');
 
-router.post('/', async(req, res) => {
-    try{
-        const {word_es, word_en} = req.body;
-        const nuevaPalabra = await Word.create({word_es, word_en});
-        res.json(nuevaPalabra);
-    } catch(err){
-        res.status(500).json({mensaje: 'Hubo un pequeño error al crear la palabra >:(', err})
+
+//Para crear una nueva palabra
+router.post('/', async (req, res) => {
+  try {
+    const { word_es, word_en } = req.body;
+
+    // Validar campos vacíos
+    if (!word_es || !word_en) {
+      return res.status(400).json({ mensaje: 'Ambos campos son obligatorios' });
     }
+
+    // Validar duplicados (en español o inglés)
+    const existe = await Word.findOne({
+      where: {
+        [Sequelize.Op.or]: [
+          { word_es: word_es.trim().toLowerCase() },
+          { word_en: word_en.trim().toLowerCase() }
+        ]
+      }
+    });
+
+    if (existe) {
+      return res.status(400).json({ mensaje: 'Esa palabra ya existe en la base de datos' });
+    }
+
+    // Crear nueva palabra
+    const nuevaPalabra = await Word.create({
+      word_es: word_es.trim().toLowerCase(),
+      word_en: word_en.trim().toLowerCase()
+    });
+
+    res.json(nuevaPalabra);
+  } catch (err) {
+    res.status(500).json({ mensaje: 'Hubo un pequeño error al crear la palabra >:(', err });
+  }
 });
 
 //Ruta para obtener todas las palabras :)
@@ -70,18 +97,45 @@ router.get('/:id', async(req, res)=>{
 })
 
 // Ruta para actualizar una palabra
-router.put('/:id', async(req, res)=>{
-    try{
-        const {id} = req.params;
-        const {word_es, word_en} = req.body;
-        const palabra = await Word.findByPk(id);
-        if(!palabra) return res.status(404).json({mensaje: 'La palabra no fue encontrada o problablemente no exista'})
-        await palabra.update({word_es, word_en});
-        res.json(palabra);
-    }catch(err){
-        res.status(500).json({mensaje: 'Hubo un pequeño inconveniente al actualizar la palabra', err})
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { word_es, word_en } = req.body;
+
+    if (!word_es || !word_en) {
+      return res.status(400).json({ mensaje: 'Ambos campos son obligatorios' });
     }
-})
+
+    const palabra = await Word.findByPk(id);
+    if (!palabra) {
+      return res.status(404).json({ mensaje: 'La palabra no fue encontrada o probablemente no exista' });
+    }
+
+    // Validar si ya existe otra palabra con esos valores
+    const duplicada = await Word.findOne({
+      where: {
+        [Sequelize.Op.or]: [
+          { word_es: word_es.trim().toLowerCase() },
+          { word_en: word_en.trim().toLowerCase() }
+        ],
+        id: { [Sequelize.Op.ne]: id } // excluye la palabra actual
+      }
+    });
+
+    if (duplicada) {
+      return res.status(400).json({ mensaje: 'Ya existe una palabra con esos valores' });
+    }
+
+    await palabra.update({
+      word_es: word_es.trim().toLowerCase(),
+      word_en: word_en.trim().toLowerCase()
+    });
+
+    res.json(palabra);
+  } catch (err) {
+    res.status(500).json({ mensaje: 'Hubo un pequeño inconveniente al actualizar la palabra', err });
+  }
+});
 
 //Ruta para eliminar una palabra
 
